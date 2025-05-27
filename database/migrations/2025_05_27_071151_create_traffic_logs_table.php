@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('traffic_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('lane'); // 'A', 'B', atau 'C'
+            $table->string('lane');
             $table->integer('vehicle_count');
-            $table->timestamp('recorded_at'); // Waktu data dicatat
+            $table->timestamp('recorded_at')->nullable();
             $table->timestamps();
         });
     }
