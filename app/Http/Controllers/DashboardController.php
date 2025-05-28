@@ -10,52 +10,56 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // 1. Data terakhir per jalur (A, B, C)
-        $latestLogs = TrafficLog::select('lane', 'vehicle_count', 'recorded_at')
-            ->whereDate('recorded_at', Carbon::today())
-            ->orderBy('recorded_at', 'desc')
-            ->get()
-            ->groupBy('lane')
-            ->map(function ($logs) {
-                return $logs->first(); // ambil data terbaru per lane
-            });
+        $today = Carbon::today();
 
-        // 2. Total kendaraan hari ini
-        $todayTotal = TrafficLog::whereDate('recorded_at', Carbon::today())->sum('vehicle_count');
-
-        // 3. Jalur terpadat hari ini
-        $busiestLane = TrafficLog::selectRaw('lane, SUM(vehicle_count) as total')
-            ->whereDate('recorded_at', Carbon::today())
+        // Rekap per jalur hari ini
+        $rekapPerLane = TrafficLog::whereDate('recorded_at', $today)
+            ->selectRaw('lane, SUM(vehicle_count) as total')
             ->groupBy('lane')
-            ->orderByDesc('total')
+            ->pluck('total', 'lane')
+            ->toArray();
+
+        // Isi nilai default jika jalur tidak lengkap
+        $rekap = [
+            'A' => $rekapPerLane['A'] ?? 0,
+            'B' => $rekapPerLane['B'] ?? 0,
+            'C' => $rekapPerLane['C'] ?? 0,
+        ];
+        $rekap['total'] = array_sum($rekap);
+
+        // Jalur terpadat
+        $rekap['terpadat'] = collect($rekap)
+            ->only(['A', 'B', 'C'])
+            ->sortDesc()
+            ->keys()
             ->first();
 
-        // 4. Rata-rata kendaraan per jam hari ini
-        $avgPerHour = TrafficLog::whereDate('recorded_at', Carbon::today())
+        // Rata-rata per jam
+        $avgPerHour = TrafficLog::whereDate('recorded_at', $today)
             ->selectRaw('HOUR(recorded_at) as hour, SUM(vehicle_count) as total')
             ->groupBy('hour')
             ->get()
             ->avg('total');
+        $rekap['rata_rata'] = round($avgPerHour ?? 0, 2);
 
-        // 5. Semua log terbaru (limit 50)
-        $allLogs = TrafficLog::orderBy('recorded_at', 'desc')
-            ->limit(50)
+        // Grafik mingguan per jalur
+        $grafik = TrafficLog::whereBetween('recorded_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->selectRaw("DAYNAME(recorded_at) as hari, lane as jalur, SUM(vehicle_count) as total")
+            ->groupBy('hari', 'jalur')
             ->get();
 
-        // 6. Data per jam untuk grafik kendaraan per jam
-        $chartData = TrafficLog::whereDate('recorded_at', Carbon::today())
-            ->selectRaw('HOUR(recorded_at) as hour, SUM(vehicle_count) as total')
-            ->groupBy('hour')
-            ->orderBy('hour')
-            ->get();
+        // Log hari ini
+        $todayLogs = TrafficLog::whereDate('recorded_at', $today)
+            ->orderByDesc('recorded_at')
+            ->get()
+            ->map(function ($log) {
+                return (object)[
+                    'waktu' => $log->recorded_at->format('H:i'),
+                    'jalur' => $log->lane,
+                    'jumlah_kendaraan' => $log->vehicle_count,
+                ];
+            });
 
-        return view('dashboard.index', [
-            'latestLogs' => $latestLogs,
-            'todayTotal' => $todayTotal,
-            'busiestLane' => $busiestLane,
-            'avgPerHour' => round($avgPerHour, 2),
-            'logs' => $allLogs,
-            'chartData' => $chartData,
-        ]);
+        return view('dashboard', compact('rekap', 'grafik', 'todayLogs'));
     }
 }
