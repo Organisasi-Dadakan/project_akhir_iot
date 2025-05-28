@@ -12,6 +12,7 @@ class DashboardController extends Controller
     {
         // 1. Data terakhir per jalur (A, B, C)
         $latestLogs = TrafficLog::select('lane', 'vehicle_count', 'recorded_at')
+            ->whereDate('recorded_at', Carbon::today())
             ->orderBy('recorded_at', 'desc')
             ->get()
             ->groupBy('lane')
