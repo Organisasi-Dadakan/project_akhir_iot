@@ -61,6 +61,12 @@ const chart = new Chart(ctx, {
                 borderColor: 'orange',
                 fill: true,
             },
+            {
+                label: 'Jalur C',
+                data: @json($grafik->where('jalur', 'C')->pluck('total', 'hari')->toArray()),
+                borderColor: 'red',
+                fill: true,
+            },
         ]
     },
 });
