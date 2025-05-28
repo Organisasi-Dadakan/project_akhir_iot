@@ -1,61 +1,61 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\TrafficLog;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // $todayLogs = TrafficLog::whereDate('waktu', today())->get();
+        // 1. Data terakhir per jalur (A, B, C)
+        $latestLogs = TrafficLog::select('lane', 'vehicle_count', 'recorded_at')
+            ->whereDate('recorded_at', Carbon::today())
+            ->orderBy('recorded_at', 'desc')
+            ->get()
+            ->groupBy('lane')
+            ->map(function ($logs) {
+                return $logs->first(); // ambil data terbaru per lane
+            });
 
-        // $rekap = [
-        //     'A' => $todayLogs->where('jalur', 'A')->sum('jumlah_kendaraan'),
-        //     'B' => $todayLogs->where('jalur', 'B')->sum('jumlah_kendaraan'),
-        //     'C' => $todayLogs->where('jalur', 'C')->sum('jumlah_kendaraan'),
-        //     'total' => $todayLogs->sum('jumlah_kendaraan'),
-        //     'terpadat' => $todayLogs->groupBy('jalur')->map->sum('jumlah_kendaraan')->sortDesc()->keys()->first(),
-        //     'rata_rata' => round($todayLogs->sum('jumlah_kendaraan') / 24, 1),
-        // ];
+        // 2. Total kendaraan hari ini
+        $todayTotal = TrafficLog::whereDate('recorded_at', Carbon::today())->sum('vehicle_count');
 
-        // $grafik = TrafficLog::selectRaw('DAYNAME(waktu) as hari, jalur, SUM(jumlah_kendaraan) as total')
-        //     ->whereBetween('waktu', [now()->startOfWeek(), now()->endOfWeek()])
-        //     ->groupBy('hari', 'jalur')
-        //     ->get();
-        $rekap = [
-            'A' => 120,
-            'B' => 80,
-            'C' => 100,
-            'total' => 300,
-            'terpadat' => 'Jalur A',
-            'rata_rata' => 42.8,
-        ];
+        // 3. Jalur terpadat hari ini
+        $busiestLane = TrafficLog::selectRaw('lane, SUM(vehicle_count) as total')
+            ->whereDate('recorded_at', Carbon::today())
+            ->groupBy('lane')
+            ->orderByDesc('total')
+            ->first();
 
-        $todayLogs = collect([
-            (object) ['waktu' => '08:00', 'jalur' => 'A', 'jumlah_kendaraan' => 40],
-            (object) ['waktu' => '09:00', 'jalur' => 'B', 'jumlah_kendaraan' => 25],
-            (object) ['waktu' => '10:00', 'jalur' => 'C', 'jumlah_kendaraan' => 35],
+        // 4. Rata-rata kendaraan per jam hari ini
+        $avgPerHour = TrafficLog::whereDate('recorded_at', Carbon::today())
+            ->selectRaw('HOUR(recorded_at) as hour, SUM(vehicle_count) as total')
+            ->groupBy('hour')
+            ->get()
+            ->avg('total');
+
+        // 5. Semua log terbaru (limit 50)
+        $allLogs = TrafficLog::orderBy('recorded_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        // 6. Data per jam untuk grafik kendaraan per jam
+        $chartData = TrafficLog::whereDate('recorded_at', Carbon::today())
+            ->selectRaw('HOUR(recorded_at) as hour, SUM(vehicle_count) as total')
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->get();
+
+        return view('dashboard.index', [
+            'latestLogs' => $latestLogs,
+            'todayTotal' => $todayTotal,
+            'busiestLane' => $busiestLane,
+            'avgPerHour' => round($avgPerHour, 2),
+            'logs' => $allLogs,
+            'chartData' => $chartData,
         ]);
-
-        $grafik = collect([
-            (object) ['hari' => 'Senin', 'jalur' => 'A', 'total' => 100],
-            (object) ['hari' => 'Selasa', 'jalur' => 'A', 'total' => 110],
-            (object) ['hari' => 'Rabu', 'jalur' => 'A', 'total' => 130],
-            (object) ['hari' => 'Kamis', 'jalur' => 'A', 'total' => 140],
-            (object) ['hari' => 'Jumat', 'jalur' => 'A', 'total' => 120],
-            (object) ['hari' => 'Sabtu', 'jalur' => 'A', 'total' => 90],
-            (object) ['hari' => 'Minggu', 'jalur' => 'A', 'total' => 70],
-
-            (object) ['hari' => 'Senin', 'jalur' => 'B', 'total' => 80],
-            (object) ['hari' => 'Selasa', 'jalur' => 'B', 'total' => 60],
-            (object) ['hari' => 'Rabu', 'jalur' => 'B', 'total' => 75],
-            (object) ['hari' => 'Kamis', 'jalur' => 'B', 'total' => 90],
-            (object) ['hari' => 'Jumat', 'jalur' => 'B', 'total' => 100],
-            (object) ['hari' => 'Sabtu', 'jalur' => 'B', 'total' => 85],
-            (object) ['hari' => 'Minggu', 'jalur' => 'B', 'total' => 70],
-        ]);
-
-        return view('dashboard', compact('rekap', 'todayLogs', 'grafik'));
     }
 }
