@@ -8,4 +8,3 @@ class TrafficLog extends Model
 {
     protected $fillable = ['lane', 'vehicle_count', 'recorded_at'];
 }
-
