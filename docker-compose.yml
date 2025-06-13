@@ -14,7 +14,7 @@ services:
 
 
   nginx:
-    nginx: nginx:1.19-alpine
+    image: nginx:1.19-alpine
     container_name: laravel_nginx
     restart: unless-stopped
     volumes:
