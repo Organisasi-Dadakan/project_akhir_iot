@@ -11,7 +11,7 @@ class Traffic extends Model
 
     // Jika tabelnya bernama 'traffics', tidak perlu override $table.
     // Kalau kamu pakai nama lain, aktifkan baris berikut:
-    // protected $table = 'nama_tabel';
+    protected $table = 'traffics';
 
     protected $fillable = [
         'Jalur',
