@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Traffic;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -12,19 +12,18 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
 
-        $jalurTables = [
-            'A' => 'jalur_a',
-            'B' => 'jalur_b',
-            'C' => 'jalur_c',
-        ];
+        // Rekap kendaraan per jalur hari ini
+        $rekapPerLane = Traffic::whereDate('created_at', $today)
+            ->selectRaw('Jalur, SUM(jumlah_kendaraan) as total')
+            ->groupBy('Jalur')
+            ->pluck('total', 'Jalur')
+            ->toArray();
 
-        // Rekap jumlah kendaraan per jalur hari ini
-        $rekap = [];
-        foreach ($jalurTables as $key => $table) {
-            $rekap[$key] = DB::table($table)
-                ->whereDate('timestamp', $today)
-                ->sum('jumlah_kendaraan');
-        }
+        $rekap = [
+            'A' => $rekapPerLane['A'] ?? 0,
+            'B' => $rekapPerLane['B'] ?? 0,
+            'C' => $rekapPerLane['C'] ?? 0,
+        ];
         $rekap['total'] = array_sum($rekap);
         $rekap['terpadat'] = collect($rekap)
             ->only(['A', 'B', 'C'])
@@ -32,56 +31,31 @@ class DashboardController extends Controller
             ->keys()
             ->first();
 
-        // Rata-rata kendaraan per jam hari ini (gabungan)
-        $allTodayLogs = collect();
-        foreach ($jalurTables as $jalur => $table) {
-            $logs = DB::table($table)
-                ->whereDate('timestamp', $today)
-                ->selectRaw("HOUR(timestamp) as hour, jumlah_kendaraan")
-                ->get()
-                ->map(function ($log) use ($jalur) {
-                    return [
-                        'hour' => $log->hour,
-                        'jumlah_kendaraan' => $log->jumlah_kendaraan,
-                        'jalur' => $jalur,
-                    ];
-                });
-            $allTodayLogs = $allTodayLogs->merge($logs);
-        }
-        $rekap['rata_rata'] = round(
-            $allTodayLogs->groupBy('hour')->map->sum('jumlah_kendaraan')->avg() ?? 0,
-            2
-        );
+        // Rata-rata per jam
+        $avgPerHour = Traffic::whereDate('created_at', $today)
+            ->selectRaw('HOUR(created_at) as hour, SUM(jumlah_kendaraan) as total')
+            ->groupBy('hour')
+            ->get()
+            ->avg('total');
+        $rekap['rata_rata'] = round($avgPerHour ?? 0, 2);
 
         // Grafik mingguan per jalur
-        $grafik = [];
-        foreach ($jalurTables as $jalur => $table) {
-            $grafik[$jalur] = DB::table($table)
-                ->whereBetween('timestamp', [now()->startOfWeek(), now()->endOfWeek()])
-                ->selectRaw("DAYNAME(timestamp) as hari, SUM(jumlah_kendaraan) as total")
-                ->groupBy('hari')
-                ->pluck('total', 'hari')
-                ->toArray();
-        }
+        $grafik = Traffic::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->selectRaw("DAYNAME(created_at) as hari, Jalur, SUM(jumlah_kendaraan) as total")
+            ->groupBy('hari', 'Jalur')
+            ->get();
 
-        // Log hari ini (gabungan)
-        $todayLogs = collect();
-        foreach ($jalurTables as $jalur => $table) {
-            $logs = DB::table($table)
-                ->whereDate('timestamp', $today)
-                ->orderByDesc('timestamp')
-                ->get()
-                ->map(function ($log) use ($jalur) {
-                    return (object)[
-                        'waktu' => Carbon::parse($log->timestamp)->format('H:i'),
-                        'jalur' => $jalur,
-                        'jumlah_kendaraan' => $log->jumlah_kendaraan,
-                    ];
-                });
-            $todayLogs = $todayLogs->merge($logs);
-        }
-
-        $todayLogs = $todayLogs->sortByDesc('waktu');
+        // Log hari ini
+        $todayLogs = Traffic::whereDate('created_at', $today)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($log) {
+                return (object)[
+                    'waktu' => $log->created_at->format('H:i'),
+                    'jalur' => $log->Jalur,
+                    'jumlah_kendaraan' => $log->jumlah_kendaraan,
+                ];
+            });
 
         return view('dashboard', compact('rekap', 'grafik', 'todayLogs'));
     }
