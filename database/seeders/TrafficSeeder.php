@@ -13,21 +13,23 @@ class TrafficSeeder extends Seeder
      */
     public function run(): void
     {
-        $jalurs = ['A', 'B', 'C'];
-        $now = Carbon::now();
+        $start = Carbon::now()->subHour(); // mulai dari 1 jam yang lalu
+        $data = [];
 
-        foreach (range(0, 6) as $dayOffset) { // 7 hari terakhir
-            foreach (range(0, 23) as $hour) { // per jam
-                foreach ($jalurs as $jalur) {
-                    Traffic::create([
-                        'Jalur' => $jalur,
-                        'jumlah_kendaraan' => rand(10, 100),
-                        'durasi_lampu_hijau' => rand(20, 60),
-                        'created_at' => $now->copy()->subDays($dayOffset)->setTime($hour, 0, 0),
-                        'updated_at' => $now->copy()->subDays($dayOffset)->setTime($hour, 0, 0),
-                    ]);
-                }
+        for ($i = 0; $i < 30; $i++) { // 30 cycle (2 menit sekali = 1 jam)
+            $timestamp = $start->copy()->addMinutes($i * 2);
+
+            foreach (['A', 'B', 'C'] as $jalur) {
+                $data[] = [
+                    'Jalur' => $jalur,
+                    'jumlah_kendaraan' => rand(10, 100),
+                    'durasi_lampu_hijau' => rand(20, 60),
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
             }
         }
+
+        Traffic::insert($data);
     }
 }
