@@ -51,25 +51,24 @@
                 datasets: [
                     {
                         label: 'Jalur A',
-                        data: @json(array_values($grafik['A'])),
+                        data: @json($grafik->where('Jalur', 'A')->pluck('total', 'hari')->toArray()),
                         borderColor: 'blue',
                         fill: true,
                     },
                     {
                         label: 'Jalur B',
-                        data: @json(array_values($grafik['B'])),
+                        data: @json($grafik->where('Jalur', 'B')->pluck('total', 'hari')->toArray()),
                         borderColor: 'orange',
                         fill: true,
                     },
                     {
                         label: 'Jalur C',
-                        data: @json(array_values($grafik['C'])),
+                        data: @json($grafik->where('Jalur', 'C')->pluck('total', 'hari')->toArray()),
                         borderColor: 'red',
                         fill: true,
                     },
                 ]
             }
-
         });
     </script>
 @endsection
