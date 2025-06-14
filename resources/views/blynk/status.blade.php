@@ -14,6 +14,13 @@
         </li>
     @endif
 @endforeach
+
+@if (isset($status_terpadat))
+    <li>Jalur Terpadat (V4) -
+        {{ $status_terpadat ? '✅ sukses dikirim' : '❌ gagal dikirim' }}
+    </li>
+@endif
+
 </ul>
 
 <script>

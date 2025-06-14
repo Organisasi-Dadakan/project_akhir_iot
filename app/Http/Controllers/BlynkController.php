@@ -24,6 +24,8 @@ class BlynkController extends Controller
         ];
 
         $hasil = [];
+        $jumlahPerJalur = [];
+        $status_terpadat = null;
 
         foreach ($jalurList as $jalur) {
             // Ambil data terbaru dari tabel traffics berdasarkan kolom Jalur
@@ -36,11 +38,16 @@ class BlynkController extends Controller
                 $jumlah = $data->jumlah_kendaraan;
                 $durasi = $data->durasi_lampu_hijau;
 
+                // Simpan jumlah kendaraan per jalur untuk logika jalur terpadat
+                $jumlahPerJalur[$jalur] = $jumlah;
+
+                // Kirim jumlah kendaraan ke Blynk
                 $res1 = Http::get("http://blynk.cloud/external/api/update", [
                     'token' => $token,
                     $pinMap[$jalur]['jumlah_kendaraan_rt'] => $jumlah,
                 ]);
 
+                // Kirim durasi lampu hijau ke Blynk
                 $res2 = Http::get("http://blynk.cloud/external/api/update", [
                     'token' => $token,
                     $pinMap[$jalur]['durasi_lampu_hijau'] => $durasi,
@@ -59,7 +66,21 @@ class BlynkController extends Controller
             }
         }
 
-        return view('blynk.status', compact('hasil'));
+        // Kirim Jalur Terpadat ke V4
+        if (!empty($jumlahPerJalur)) {
+            $jalurTerpadat = array_keys($jumlahPerJalur, max($jumlahPerJalur))[0];
+            $labelTerpadat = "Jalur " . $jalurTerpadat;
+
+            $res3 = Http::get("http://blynk.cloud/external/api/update", [
+                'token' => $token,
+                'V4' => $labelTerpadat,
+            ]);
+
+            $status_terpadat = $res3->successful();
+
+        }
+
+        return view('blynk.status', compact('hasil', 'status_terpadat'));
     }
 
     public function handle()
