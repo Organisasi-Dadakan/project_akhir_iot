@@ -23,9 +23,16 @@ class BlynkController extends Controller
             'C' => ['jumlah_kendaraan_rt' => 'V2', 'durasi_lampu_hijau' => 'V7'],
         ];
 
+        $pinMerahMap = [
+        'A' => 'V8',
+        'B' => 'V9',
+        'C' => 'V10',
+        ];
+        
         $hasil = [];
         $jumlahPerJalur = [];
         $status_terpadat = null;
+        $totalSiklusMerah = 120;
 
         foreach ($jalurList as $jalur) {
             // Ambil data terbaru dari tabel traffics berdasarkan kolom Jalur
@@ -37,6 +44,7 @@ class BlynkController extends Controller
             if ($data) {
                 $jumlah = $data->jumlah_kendaraan;
                 $durasi = $data->durasi_lampu_hijau;
+                $durasiMerah = $totalSiklusMerah - $durasi;
 
                 // Simpan jumlah kendaraan per jalur untuk logika jalur terpadat
                 $jumlahPerJalur[$jalur] = $jumlah;
@@ -53,10 +61,17 @@ class BlynkController extends Controller
                     $pinMap[$jalur]['durasi_lampu_hijau'] => $durasi,
                 ]);
 
+                // Kirim durasi merah
+                $res3 = Http::get("http://blynk.cloud/external/api/update", [
+                    'token' => $token,
+                    $pinMerahMap[$jalur] => $durasiMerah,
+                ]);
+
                 $hasil[] = [
                     'jalur' => $jalur,
                     'jumlah_kendaraan' => $res1->successful(),
                     'durasi_lampu_hijau' => $res2->successful(),
+                    'durasi_lampu_merah' => $res3->successful(),
                 ];
             } else {
                 $hasil[] = [

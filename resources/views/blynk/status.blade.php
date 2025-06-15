@@ -11,6 +11,11 @@
             {{ $row['jumlah_kendaraan'] ? '✅ jumlah_kendaraan_rt' : '❌ jumlah_kendaraan_rt' }}
             |
             {{ $row['durasi_lampu_hijau'] ? '✅ durasi_lampu_hijau' : '❌ durasi_lampu_hijau' }}
+            |
+            {{ isset($row['durasi_lampu_merah']) ? 
+                ($row['durasi_lampu_merah'] ? '✅ durasi_lampu_merah (' . 
+                    ($row['jalur'] == 'A' ? 'V8' : ($row['jalur'] == 'B' ? 'V9' : 'V10')) . ')' 
+                    : '❌ durasi_lampu_merah') : '' }}
         </li>
     @endif
 @endforeach
