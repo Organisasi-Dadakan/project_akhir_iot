@@ -32,5 +32,5 @@
     // Auto reload setiap 120 detik (120000 milidetik)
     setTimeout(function () {
         location.reload();
-    }, 120000);
+    }, 5000);
 </script>
