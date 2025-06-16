@@ -28,6 +28,13 @@ class BlynkController extends Controller
         'B' => 'V9',
         'C' => 'V10',
         ];
+
+        // Pin untuk chart (bisa beda atau sama dengan jumlah_kendaraan_rt)
+        $pinChartMap = [
+            'A' => 'V11', // Simple Chart A
+            'B' => 'V12', // Simple Chart B
+            'C' => 'V13', // Simple Chart C 
+        ];
         
         $hasil = [];
         $jumlahPerJalur = [];
@@ -67,11 +74,24 @@ class BlynkController extends Controller
                     $pinMerahMap[$jalur] => $durasiMerah,
                 ]);
 
+                // 🔴 Kirim ke Chart
+                $resChart = Http::get("http://blynk.cloud/external/api/update", [
+                    'token' => $token,
+                    'pin' => $pinChartMap[$jalur],
+                    'value' => $jumlah,
+                ]);
+
+                
+                // dd("Chart $jalur: " . $resChart->body());
+                // Log::info("Chart $jalur: " . $resChart->body());
+                // Log::info("Chart $jalur | PIN: {$pinChartMap[$jalur]} | Value: $jumlah | Status: " . $resChart->status() . " | Body: " . $resChart->body());
+
                 $hasil[] = [
                     'jalur' => $jalur,
                     'jumlah_kendaraan' => $res1->successful(),
                     'durasi_lampu_hijau' => $res2->successful(),
                     'durasi_lampu_merah' => $res3->successful(),
+                    'jumlah_chart' => $resChart->successful(),
                 ];
             } else {
                 $hasil[] = [

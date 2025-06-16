@@ -10,6 +10,8 @@
         <li>Jalur {{ $row['jalur'] }} -
             {{ $row['jumlah_kendaraan'] ? '✅ jumlah_kendaraan_rt' : '❌ jumlah_kendaraan_rt' }}
             |
+            {{ $row['jumlah_chart'] ? '✅ chart' : '❌ chart' }}
+            |
             {{ $row['durasi_lampu_hijau'] ? '✅ durasi_lampu_hijau' : '❌ durasi_lampu_hijau' }}
             |
             {{ isset($row['durasi_lampu_merah']) ? 
@@ -32,5 +34,5 @@
     // Auto reload setiap 120 detik (120000 milidetik)
     setTimeout(function () {
         location.reload();
-    }, 5000);
+    }, 10000);
 </script>
