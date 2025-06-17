@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('traffics', function (Blueprint $table) {
             $table->id();
             $table->string('Jalur');
-            $table->string('jumlah_kendaraan');
-            $table->string('durasi_lampu_hijau');
+            $table->integer('jumlah_kendaraan');
+            $table->integer('durasi_lampu_hijau');
             $table->timestamps();
         });
     }

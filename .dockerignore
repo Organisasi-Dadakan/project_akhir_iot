@@ -1,0 +1,18 @@
+# Hiraukan dependensi yang akan diinstall di dalam kontainer
+vendor/
+node_modules/
+
+# Hiraukan file environment lokal, karena kita menggunakan env_file di docker-compose
+.env
+
+# Hiraukan file-file git
+.git
+.gitignore
+
+# Hiraukan file Docker itu sendiri
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Hiraukan log Laravel
+storage/logs/laravel.log
