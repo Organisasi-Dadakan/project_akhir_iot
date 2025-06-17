@@ -32,8 +32,22 @@
 </ul>
 
 <script>
-    // Auto reload setiap 10 detik
-    setTimeout(function () {
-        location.reload();
-    }, 20000);
+    const lastCheck = "{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s') }}";  // ✅ Sama persis dengan format di DB
+
+    setInterval(() => {
+        fetch(`/sendToBlynk/${encodeURIComponent(lastCheck)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.ada_data_baru) {
+                    console.log("📡 Data baru terdeteksi, mengirim ke Blynk...");
+                    fetch('/sendToBlynk')
+                        .then(() => {
+                            location.reload();
+                        });
+                } else {
+                    console.log("⏳ Tidak ada data baru.");
+                }
+            })
+            .catch(error => console.error('❌ Gagal cek data baru:', error));
+    }, 10000);
 </script>

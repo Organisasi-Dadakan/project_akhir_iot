@@ -17,6 +17,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::get('/blynk/status', [BlynkController::class, 'status']);
 Route::get('/sendToBlynk', [BlynkController::class, 'kirim']);
+Route::get('/sendToBlynk/{lastTimestamp}', [BlynkController::class, 'cekDataBaru']);
 
 require __DIR__.'/auth.php';
