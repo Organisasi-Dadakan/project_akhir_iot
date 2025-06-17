@@ -1,12 +1,26 @@
-# Gunakan image PHP 8.2 FPM Alpine sebagai dasar
+# --- STAGE 1: Build Aset Frontend ---
+FROM node:18-alpine AS node_builder
+
+WORKDIR /var/www/html
+
+# Salin file dependensi dan install
+COPY package.json yarn.lock ./
+RUN yarn install
+
+# Salin sisa file dan build aset
+COPY . .
+RUN yarn build
+
+# --- STAGE 2: Build Aplikasi PHP ---
 FROM php:8.2-fpm-alpine
 
-# Install dependensi sistem yang dibutuhkan
+# Install dependensi sistem yang dibutuhkan untuk runtime
 RUN apk add --no-cache \
-    git curl libzip-dev zip \
-    supervisor build-base mariadb-dev \
-    libpng-dev libjpeg-turbo-dev freetype-dev \
-    libwebp-dev nodejs npm
+    libzip-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libwebp-dev
 
 # Install ekstensi PHP
 RUN docker-php-ext-install pdo pdo_mysql zip exif pcntl gd
@@ -14,27 +28,19 @@ RUN docker-php-ext-install pdo pdo_mysql zip exif pcntl gd
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Atur direktori kerja
 WORKDIR /var/www/html
 
-# --- PERUBAHAN UTAMA DI SINI ---
-
-# 1. SALIN SEMUA FILE APLIKASI TERLEBIH DAHULU
-# Ini memastikan file 'artisan' dan semua file lain sudah ada
-COPY . .
-
-# 2. BARU INSTALL DEPENDENSI BACKEND
-# Sekarang Composer bisa menemukan file 'artisan' untuk menjalankan skripnya
+# Manfaatkan caching: Salin file composer dulu, baru install
+COPY --chown=www-data:www-data composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader
 
-# 3. INSTALL DEPENDENSI FRONTEND & BUILD ASET
-RUN npm install
-RUN npm run build
+# Salin semua sisa file aplikasi
+COPY --chown=www-data:www-data . .
 
-# 4. HAPUS node_modules UNTUK MENGECILKAN UKURAN IMAGE
-RUN rm -rf node_modules
+# Salin aset yang sudah di-build dari stage node_builder
+COPY --from=node_builder /var/www/html/public/build /var/www/html/public/build
 
-# 5. PERBAIKI HAK AKSES
+# Atur hak akses yang benar untuk Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Ekspos port dan jalankan PHP-FPM
