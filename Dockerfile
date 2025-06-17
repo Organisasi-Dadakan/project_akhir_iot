@@ -1,12 +1,21 @@
-# Gunakan image PHP 8.2 FPM Alpine sebagai dasar
+# --- STAGE 1: Build Aset Frontend dengan NPM ---
+FROM node:18-alpine AS node_builder
+WORKDIR /var/www/html
+COPY package.json package-lock.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# --- STAGE 2: Stage Final untuk Runtime PHP ---
 FROM php:8.2-fpm-alpine
 
-# Install dependensi sistem yang dibutuhkan
+# Install dependensi sistem yang dibutuhkan untuk runtime
 RUN apk add --no-cache \
-    git curl libzip-dev zip \
-    supervisor build-base mariadb-dev \
-    libpng-dev libjpeg-turbo-dev freetype-dev \
-    libwebp-dev nodejs npm
+    libzip-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libwebp-dev
 
 # Install ekstensi PHP
 RUN docker-php-ext-install pdo pdo_mysql zip exif pcntl gd
@@ -14,27 +23,28 @@ RUN docker-php-ext-install pdo pdo_mysql zip exif pcntl gd
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Atur direktori kerja
 WORKDIR /var/www/html
 
-# --- PERUBAHAN UTAMA DI SINI ---
+# --- PERUBAHAN UTAMA ADA DI SINI ---
 
-# 1. SALIN SEMUA FILE APLIKASI TERLEBIH DAHULU
-# Ini memastikan file 'artisan' dan semua file lain sudah ada
-COPY . .
+# 1. Salin file composer terlebih dahulu untuk caching
+COPY --chown=www-data:www-data composer.json composer.lock ./
 
-# 2. BARU INSTALL DEPENDENSI BACKEND
-# Sekarang Composer bisa menemukan file 'artisan' untuk menjalankan skripnya
-RUN composer install --no-dev --optimize-autoloader
+# 2. Install dependensi, TAPI lewati (skip) semua skrip
+#    Ini mencegah error "artisan not found"
+RUN composer install --no-dev --no-scripts --optimize-autoloader
 
-# 3. INSTALL DEPENDENSI FRONTEND & BUILD ASET
-RUN npm install
-RUN npm run build
+# 3. Sekarang, salin semua sisa file aplikasi (termasuk 'artisan')
+COPY --chown=www-data:www-data . .
 
-# 4. HAPUS node_modules UNTUK MENGECILKAN UKURAN IMAGE
-RUN rm -rf node_modules
+# 4. Setelah semua file ada, jalankan 'dump-autoload'
+#    Perintah ini akan menjalankan skrip yang kita lewati sebelumnya, seperti 'package:discover'
+RUN composer dump-autoload --optimize --no-dev
 
-# 5. PERBAIKI HAK AKSES
+# Salin aset yang sudah di-build dari stage 'node_builder'
+COPY --from=node_builder /var/www/html/public/build /var/www/html/public/build
+
+# Atur hak akses folder yang benar
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Ekspos port dan jalankan PHP-FPM
