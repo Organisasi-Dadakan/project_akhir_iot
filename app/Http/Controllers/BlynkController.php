@@ -4,20 +4,23 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use App\Console\Commands\sendToBlynk;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Artisan;
 
 class BlynkController extends Controller
 {
+    public function status()
+    {
+        // Jalankan method kirim dan langsung return view-nya
+        return $this->kirim();
+    }
+
     public function kirim()
     {
         $token = env('BLYNK_TOKEN');
 
-        // Daftar jalur yang tersedia
         $jalurList = ['A', 'B', 'C'];
 
-        // Mapping pin Blynk
         $pinMap = [
             'A' => ['jumlah_kendaraan_rt' => 'V0', 'durasi_lampu_hijau' => 'V5'],
             'B' => ['jumlah_kendaraan_rt' => 'V1', 'durasi_lampu_hijau' => 'V6'],
@@ -65,7 +68,7 @@ class BlynkController extends Controller
         // 🔁 Loop tiap jalur
         foreach ($jalurList as $jalur) {
             $data = DB::table('traffics')
-                ->where('Jalur', $jalur)
+                ->where('jalur', $jalur)
                 ->orderByDesc('created_at')
                 ->first();
 
@@ -108,6 +111,11 @@ class BlynkController extends Controller
                     'durasi_lampu_merah' => $res3->successful(),
                     'jumlah_chart' => $resChart->successful(),
                 ];
+            } else {
+                $hasil[] = [
+                    'jalur' => $jalur,
+                    'error' => '❌ Tidak ada data untuk jalur ini',
+                ];
             }
         }
 
@@ -115,7 +123,6 @@ class BlynkController extends Controller
         if (!empty($jumlahPerJalur)) {
             $maxJumlah = max($jumlahPerJalur);
             $jalurTerpadatList = array_keys($jumlahPerJalur, $maxJumlah);
-
             $labelTerpadat = 'Jalur ' . implode(', ', $jalurTerpadatList);
 
             $res4 = Http::get("http://blynk.cloud/external/api/update", [
@@ -129,9 +136,18 @@ class BlynkController extends Controller
         return view('blynk.status', compact('hasil', 'status_terpadat'));
     }
 
-    public function handle()
-    {
-        Artisan::call('blynk:send');
-        return redirect()->back()->with('success', 'Data berhasil dikirim ke Blynk.');
-    }
+    public function cekDataBaru($lastTimestamp)
+{
+    $latest = DB::table('traffics')->orderByDesc('created_at')->first();
+
+    Log::info("🔍 lastTimestamp frontend: $lastTimestamp");
+    Log::info("🕒 created_at terbaru DB: " . ($latest->created_at ?? 'NULL'));
+
+    $dataTerbaru = DB::table('traffics')
+        ->where('created_at', '>', $lastTimestamp)
+        ->exists();
+
+    return response()->json(['ada_data_baru' => $dataTerbaru]);
+}
+
 }
