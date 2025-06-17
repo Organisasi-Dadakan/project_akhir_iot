@@ -113,8 +113,10 @@ class BlynkController extends Controller
 
         // 🟥 Kirim jalur terpadat ke V4
         if (!empty($jumlahPerJalur)) {
-            $jalurTerpadat = array_keys($jumlahPerJalur, max($jumlahPerJalur))[0];
-            $labelTerpadat = "Jalur " . $jalurTerpadat;
+            $maxJumlah = max($jumlahPerJalur);
+            $jalurTerpadatList = array_keys($jumlahPerJalur, $maxJumlah);
+
+            $labelTerpadat = 'Jalur ' . implode(', ', $jalurTerpadatList);
 
             $res4 = Http::get("http://blynk.cloud/external/api/update", [
                 'token' => $token,

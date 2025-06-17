@@ -35,5 +35,5 @@
     // Auto reload setiap 10 detik
     setTimeout(function () {
         location.reload();
-    }, 10000);
+    }, 20000);
 </script>
