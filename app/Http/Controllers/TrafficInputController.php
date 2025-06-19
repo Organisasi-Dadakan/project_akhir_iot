@@ -12,45 +12,53 @@ class TrafficInputController extends Controller
 {
     public function store(Request $request)
     {
-        $payload = $request->all();
-        $data = isset($payload['data']) ? $payload['data'] : $payload;
-
-        if (!is_array($data) || empty($data)) {
-            return response()->json(['message' => 'Format data tidak valid atau data kosong'], 400);
-        }
-
-        DB::beginTransaction();
-
         try {
-            foreach ($data as $item) {
+            $data = $request->json()->all();
+
+            // Pastikan data berbentuk array
+            if (!is_array($data)) {
+                return response()->json([
+                    'message' => 'Format JSON harus berupa array'
+                ], 400);
+            }
+
+            $inserted = [];
+            $errors = [];
+
+            foreach ($data as $index => $item) {
+                // Validasi tiap item
                 $validator = Validator::make($item, [
-                    'jalur' => 'required|string|max:255',
-                    'jumlah_kendaraan' => 'required|integer',
-                    'durasi_lampu_hijau' => 'required|integer',
+                    'jalur' => 'required|string|in:A,B,C',
+                    'jumlah_kendaraan' => 'required|integer|min:0',
+                    'durasi_lampu_hijau' => 'required|integer|min:0',
                 ]);
 
                 if ($validator->fails()) {
-                    DB::rollBack();
-                    return response()->json([
-                        'message' => 'Data item tidak valid',
-                        'errors' => $validator->errors()
-                    ], 422);
+                    $errors[$index] = $validator->errors()->all();
+                    continue;
                 }
 
-                Traffic::create([
-                    'jalur' => $item['jalur'],
+                // Simpan ke DB
+                $record = Traffic::create([
+                    'Jalur' => $item['jalur'],
                     'jumlah_kendaraan' => $item['jumlah_kendaraan'],
                     'durasi_lampu_hijau' => $item['durasi_lampu_hijau'],
                 ]);
+
+                $inserted[] = $record;
             }
 
-            DB::commit();
-
-            return response()->json(['message' => 'Data berhasil disimpan'], 200);
+            return response()->json([
+                'message' => 'Proses selesai',
+                'inserted' => $inserted,
+                'errors' => $errors,
+            ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Gagal menyimpan data traffic: ' . $e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan pada server'], 500);
+            Log::error('TrafficInput Error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Terjadi kesalahan server',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
